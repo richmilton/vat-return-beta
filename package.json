@@ -1,0 +1,36 @@
+{
+  "name": "vat-return-beta",
+  "version": "1.0.0",
+  "description": "beta hmrc vat return via api",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/richmilton/vat-return-beta.git"
+  },
+  "author": "rmilton",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/richmilton/vat-return-beta/issues"
+  },
+  "homepage": "https://github.com/richmilton/vat-return-beta#readme",
+  "dependencies": {
+    "cookie-session": "^2.0.0-beta.3",
+    "dateformat": "^3.0.3",
+    "express": "^4.16.4",
+    "mysql2": "^1.6.4",
+    "sequelize": "^4.42.0",
+    "simple-oauth2": "^2.2.1",
+    "superagent": "^4.1.0"
+  },
+  "devDependencies": {
+    "chai": "^4.1.2",
+    "chai-http": "^4.2.1",
+    "concurrently": "^3.5.1",
+    "dotenv": "^5.0.0",
+    "mocha": "^5.0.0",
+    "supports-color": "^5.1.0"
+  }
+}
