@@ -1,26 +1,52 @@
 const data = require('../data/index');
-const dateFormat = require('dateformat');
+//const dateFormat = require('dateformat');
 
 const getTrialReturn = (month, year) => {
 
   return new Promise(async (resolve, reject) => {
+    let totalInputVATToDate;
+    let totalOutputVATToDate;
+    let netSalesToDate;
+    let totalECSalesToDate;
+    let totalECPurchasesToDate;
+    let netPurchasesToDate;
     let now = Date.now();
+    let qEnd;
+    let totalSubmittedSql;
+    let totalSubmitted;
     const timeIt = (startTime) => console.log(Date.now() - startTime);
 
-    let totalSubmittedSql = "SELECT " +
-      "month(date_add(max(EndDate), interval 3 month)) as NextEndMonth, " +
-      "year(date_add(max(EndDate), interval 3 month)) as NextEndYear, " +
-      "if(now()<date_add(max(EndDate), interval 3 month),0,1) as CanBeSubmitted, " +
-      "date_add(max(EndDate), interval 1 day) as NextVATPeriodBegin, " +
-      "date_add(max(EndDate), interval 3 month) as NextVATPeriodEnd, " +
-      "sum(Inputs) as InputTotals, sum(Outputs) as OutputTotals, " +
-      "sum(InputVAT) as InputVAT, sum(OutputVAT) as OutputVAT, " +
-      "sum(ECPurchases) as ECPurchases, sum(ECSales) as ECSales " +
-      "FROM vathistory where Status='Actual'";
-    let totalSubmitted = await data.sqPl.query(totalSubmittedSql, { type: data.Sequelize.QueryTypes.SELECT});
-    timeIt(now);
+    try {
+      totalSubmittedSql = "SELECT " +
+        "month(date_add(max(EndDate), interval 3 month)) as NextEndMonth, " +
+        "year(date_add(max(EndDate), interval 3 month)) as NextEndYear, " +
+        "if(now()<date_add(max(EndDate), interval 3 month),0,1) as CanBeSubmitted, " +
+        "date_add(max(EndDate), interval 1 day) as NextVATPeriodBegin, " +
+        "date_add(max(EndDate), interval 3 month) as NextVATPeriodEnd, " +
+        "sum(Inputs) as InputTotals, sum(Outputs) as OutputTotals, " +
+        "sum(InputVAT) as InputVAT, sum(OutputVAT) as OutputVAT, " +
+        "sum(ECPurchases) as ECPurchases, sum(ECSales) as ECSales " +
+        "FROM vathistory where Status='Actual'";
+      totalSubmitted = await data.sqPl.query(totalSubmittedSql, {type: data.Sequelize.QueryTypes.SELECT});
+      timeIt(now);
 
-    let qEnd = `${year || totalSubmitted[0].NextEndYear}-${month || totalSubmitted[0].NextEndMonth}-31`;
+      year = year || totalSubmitted[0]['NextEndYear'];
+      month = month || totalSubmitted[0]['NextEndMonth'];
+
+      if (!totalSubmitted.length) reject(new Error('No data returned'));
+      if (!year) reject(new Error('Year not found or passed'));
+      if (!month) reject(new Error('Month not found or passed'));
+
+      qEnd = `${year}-${month}-31`;
+
+      console.log('Preparing return values for ' + qEnd);
+    }
+    catch (e) {
+      reject(e);
+    }
+    finally {
+
+    }
 
     let sql = "SELECT " +
       "sum((PurchaseAmount/100)-(PurchaseAmount/100/(1+(VatRate/10000)))) as 'value' " +
@@ -31,7 +57,7 @@ const getTrialReturn = (month, year) => {
     sql = "SELECT " +
       "round(sum(NetAmount/100*TaxRate/100))/100 as inputVAT " +
       "FROM invoice_item j inner join invoice i on i.InvoiceId=j.InvoiceId where InvoiceDate <= ?";
-    let totalInputVATToDateP = data.sqPl.query(sql, {replacements: [qEnd],  type: data.Sequelize.QueryTypes.SELECT});
+    let totalInputVATToDateP = data.sqPl.query(sql, {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
     timeIt(now);
 
     sql = "SELECT " +
@@ -62,12 +88,12 @@ const getTrialReturn = (month, year) => {
     let totalECSalesToDateP = data.sqAdmin.query(sql, {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
     timeIt(now);
 
-    let totalInputVATToDate = await totalInputVATToDateP;
-    let totalOutputVATToDate = await totalOutputVATToDateP;
-    let netSalesToDate = await netSalesToDateP;
-    let netPurchasesToDate = await netPurchasesToDateP;
-    let totalECPurchasesToDate = await totalECPurchasesToDateP;
-    let totalECSalesToDate = await totalECSalesToDateP;
+    totalInputVATToDate = await totalInputVATToDateP;
+    totalOutputVATToDate = await totalOutputVATToDateP;
+    netSalesToDate = await netSalesToDateP;
+    netPurchasesToDate = await netPurchasesToDateP;
+    totalECPurchasesToDate = await totalECPurchasesToDateP;
+    totalECSalesToDate = await totalECSalesToDateP;
 
     let trialJson = {
       //grossSales: gross,
@@ -75,21 +101,21 @@ const getTrialReturn = (month, year) => {
       due: {
         InputTotals: netPurchasesToDate[0].total,
         OutputTotals: netSalesToDate[0].total - totalOutputVATToDate[0].value,
-        InputVAT: totalInputVATToDate[0].inputVAT,
+        InputVAT: totalInputVATToDate[0]['inputVAT'],
         OutputVAT: totalOutputVATToDate[0].value,
-        ECPurchases: totalECPurchasesToDate[0].ecPurchases,
-        ECSales: totalECSalesToDate[0].ecSales
+        ECPurchases: totalECPurchasesToDate[0]['ecPurchases'],
+        ECSales: totalECSalesToDate[0]['ecSales']
       },
       declare: {
-        Inputs: Math.round(netPurchasesToDate[0].total - totalSubmitted[0].InputTotals),
+        Inputs: Math.round(netPurchasesToDate[0].total - totalSubmitted[0]['InputTotals']),
         Outputs: Math.round(netSalesToDate[0].total - totalOutputVATToDate[0].value - totalSubmitted[0].OutputTotals),
-        InputVAT: (totalInputVATToDate[0].inputVAT - totalSubmitted[0].InputVAT).toFixed(2),
+        InputVAT: (totalInputVATToDate[0]['inputVAT'] - totalSubmitted[0].InputVAT).toFixed(2),
         OutputVAT: (totalOutputVATToDate[0].value - totalSubmitted[0].OutputVAT).toFixed(2),
-        VATPayable: ((totalOutputVATToDate[0].value - totalSubmitted[0].OutputVAT) - (totalInputVATToDate[0].inputVAT - totalSubmitted[0].InputVAT)).toFixed(2),
-        ECPurchases: Math.round(totalECPurchasesToDate[0].ecPurchases - totalSubmitted[0].ECPurchases) || 0,
-        ECSales: Math.round(totalECSalesToDate[0].ecSales - totalSubmitted[0].ECSales) || 0
+        VATPayable: ((totalOutputVATToDate[0].value - totalSubmitted[0].OutputVAT) - (totalInputVATToDate[0]['inputVAT'] - totalSubmitted[0].InputVAT)).toFixed(2),
+        ECPurchases: Math.round(totalECPurchasesToDate[0]['ecPurchases'] - totalSubmitted[0].ECPurchases) || 0,
+        ECSales: Math.round(totalECSalesToDate[0]['ecSales'] - totalSubmitted[0].ECSales) || 0
       }
-    }
+    };
 
     console.log(Date.now() - now);
 
@@ -97,6 +123,6 @@ const getTrialReturn = (month, year) => {
 
   });
 
-}
+};
 
 module.exports = getTrialReturn;
