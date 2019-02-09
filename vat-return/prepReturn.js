@@ -1,9 +1,11 @@
 const data = require('../data/index');
-//const dateFormat = require('dateformat');
+const sqlQueries = require('./sql-queries');
+require('dotenv').config();
 
 const getTrialReturn = (month, year) => {
 
   return new Promise(async (resolve, reject) => {
+
     let totalECSalesToDateP;
     let totalECPurchasesToDateP;
     let netPurchasesToDateP;
@@ -18,24 +20,13 @@ const getTrialReturn = (month, year) => {
     let netPurchasesToDate;
     let now = Date.now();
     let qEnd;
-    let totalSubmittedSql;
     let totalSubmitted;
-    let sql;
     const timeIt = (startTime) => console.log(Date.now() - startTime);
 
     try {
       console.log('start select from vathistory');
-      totalSubmittedSql = "SELECT " +
-        "month(date_add(max(EndDate), interval 3 month)) as NextEndMonth, " +
-        "year(date_add(max(EndDate), interval 3 month)) as NextEndYear, " +
-        "if(now()<date_add(max(EndDate), interval 3 month),0,1) as CanBeSubmitted, " +
-        "date_add(max(EndDate), interval 1 day) as NextVATPeriodBegin, " +
-        "date_add(max(EndDate), interval 3 month) as NextVATPeriodEnd, " +
-        "sum(Inputs) as InputTotals, sum(Outputs) as OutputTotals, " +
-        "sum(InputVAT) as InputVAT, sum(OutputVAT) as OutputVAT, " +
-        "sum(ECPurchases) as ECPurchases, sum(ECSales) as ECSales " +
-        "FROM vathistory where Status='Actual'";
-      totalSubmitted = await data.sqPl.query(totalSubmittedSql, {type: data.Sequelize.QueryTypes.SELECT});
+
+      totalSubmitted = await data.sqPl.query(sqlQueries.totalSubmittedSql, {type: data.Sequelize.QueryTypes.SELECT});
       timeIt(now);
 
       year = year || totalSubmitted[0]['NextEndYear'];
@@ -58,44 +49,23 @@ const getTrialReturn = (month, year) => {
 
     try {
       console.log('start gathering VAT data');
-      sql = "SELECT " +
-        "sum((PurchaseAmount/100)-(PurchaseAmount/100/(1+(VatRate/10000)))) as 'value' " +
-        "FROM ordertable o where InvoiceDate <= ? and VatRate>0";
-      totalOutputVATToDateP = data.sqAdmin.query(sql, {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
+
+      totalOutputVATToDateP = data.sqAdmin.query(sqlQueries.totalOutputVATToDate, {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
       timeIt(now);
 
-      sql = "SELECT " +
-        "round(sum(NetAmount/100*TaxRate/100))/100 as inputVAT " +
-        "FROM invoice_item j inner join invoice i on i.InvoiceId=j.InvoiceId where InvoiceDate <= ?";
-      totalInputVATToDateP = data.sqPl.query(sql, {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
+      totalInputVATToDateP = data.sqPl.query(sqlQueries.totalInputVATToDate, {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
       timeIt(now);
 
-      sql = "SELECT " +
-        "if(sum(if(PurchaseCurrency=978,round(PurchaseAmount*Rate),PurchaseAmount)/100) is null, 0, sum(if(PurchaseCurrency=978,round(PurchaseAmount*Rate),PurchaseAmount)/100)) as total " +
-        "FROM ordertable o inner join exchange_rates on month(MonthStart)=month(InvoiceDate) and year(MonthStart)=year(InvoiceDate) " +
-        "where CpiResultsCode in (0,100) and InvoiceDate >= '2007-01-01' and InvoiceDate <= ?";
-      netSalesToDateP = data.sqAdmin.query(sql, {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
+      netSalesToDateP = data.sqAdmin.query(sqlQueries.netSalesToDate, {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
       timeIt(now);
 
-      sql = "SELECT " +
-        "if(sum(if(CurrencyId=978,(round(NetAmount*Rate*10)/1000),NetAmount/100)) is null, 0, sum(if(CurrencyId=978,(round(NetAmount*Rate*10)/1000),NetAmount/100))) as total " +
-        "FROM invoice j inner join exchange_rates on month(MonthStart)=month(InvoiceDate) and year(MonthStart)=year(InvoiceDate) " +
-        "inner join invoice_item i on i.InvoiceId=j.InvoiceId where InvoiceDate <= ?";
-      netPurchasesToDateP = data.sqPl.query(sql, {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
+      netPurchasesToDateP = data.sqPl.query(sqlQueries.netPurchasesToDate, {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
       timeIt(now);
 
-      sql = "SELECT if(sum(if(j.CurrencyId=978,(round(if(NetAmount*Rate is null,0,NetAmount*Rate)*10)/1000),NetAmount/100)) is null,0,sum(if(j.CurrencyId=978,(round(if(NetAmount*Rate is null,0,NetAmount*Rate)*10)/1000),NetAmount/100))) as ecPurchases " +
-        "FROM invoice_item i inner join invoice j on i.InvoiceId=j.InvoiceId " +
-        "inner join exchange_rates e on month(MonthStart)=month(InvoiceDate) and year(MonthStart)=year(InvoiceDate) " +
-        "inner join organisation o on o.OrganisationId=j.SupplierId where CountryCode<>826 and InvoiceDate <= ?";
-      totalECPurchasesToDateP = data.sqPl.query(sql, {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
+      totalECPurchasesToDateP = data.sqPl.query(sqlQueries.totalECPurchasesToDate, {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
       timeIt(now);
 
-      sql = "SELECT sum(if(PurchaseCurrency=978,round(PurchaseAmount*Rate),PurchaseAmount)/100) as ecSales " +
-        "FROM ordertable o inner join retailers r on Retailer_id=o.RetailerId " +
-        "inner join exchange_rates on month(MonthStart)=month(InvoiceDate) and year(MonthStart)=year(InvoiceDate) " +
-        "inner join address a on r.Retailer_Id=a.RetailerId where CpiResultsCode in (0,100) and InvoiceDate >= '2007-01-01' and InvoiceDate <= ? and Country<>'826'";
-      totalECSalesToDateP = data.sqAdmin.query(sql, {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
+      totalECSalesToDateP = data.sqAdmin.query(sqlQueries.totalECSalesToDate, {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
       timeIt(now);
 
       totalInputVATToDate = await totalInputVATToDateP;
