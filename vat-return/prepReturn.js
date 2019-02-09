@@ -1,5 +1,6 @@
 const data = require('../data/index');
 const sqlQueries = require('./sql-queries');
+const timeIt = require('../utilities/timer');
 require('dotenv').config();
 
 const getTrialReturn = (month, year) => {
@@ -21,7 +22,6 @@ const getTrialReturn = (month, year) => {
     let now = Date.now();
     let qEnd;
     let totalSubmitted;
-    const timeIt = (startTime) => console.log(Date.now() - startTime);
 
     try {
       console.log('start select from vathistory');
