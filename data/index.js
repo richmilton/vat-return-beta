@@ -1,12 +1,6 @@
+import {config} from "dotenv";
 const Sequelize = require ("sequelize");
-const Op = Sequelize.Op;
-require('dotenv').config();
-
-let dbOptions = {
-  logging: process.env.NODE_ENV === 'development' ? console.log : false,
-  pool: {maxConnections: 10, minConnections: 1},
-  dialectOptions: {dialect: process.env.DBDIALECT}
-};
+config();
 
 let sqAdmin = new Sequelize(process.env.ADMIN_DBNAME,
   process.env.ADMIN_DBUSER,
