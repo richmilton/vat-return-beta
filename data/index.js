@@ -1,6 +1,5 @@
-import {config} from "dotenv";
 const Sequelize = require ("sequelize");
-config();
+require('dotenv').config();
 
 let sqAdmin = new Sequelize(process.env.ADMIN_DBNAME,
   process.env.ADMIN_DBUSER,
