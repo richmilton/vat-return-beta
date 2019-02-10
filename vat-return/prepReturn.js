@@ -1,7 +1,7 @@
 const data = require('../data/index');
 const sqlQueries = require('./sql-queries');
 const timeIt = require('../utilities/timer');
-require('dotenv').config();
+const sequelizeQTSelect = data.Sequelize.QueryTypes.SELECT;
 
 const getTrialReturn = (month, year) => {
 
@@ -28,7 +28,7 @@ const getTrialReturn = (month, year) => {
 
       totalSubmitted = await data.sqPl.query(
         sqlQueries.totalSubmittedSql,
-        {type: data.Sequelize.QueryTypes.SELECT});
+        {type: sequelizeQTSelect});
 
       timeIt(fromStart);
 
@@ -55,37 +55,37 @@ const getTrialReturn = (month, year) => {
 
       totalOutputVATToDateP = data.sqAdmin.query(
         sqlQueries.totalOutputVATToDate,
-        {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
+        {replacements: [qEnd], type: sequelizeQTSelect});
 
       timeIt(fromStart);
 
       totalInputVATToDateP = data.sqPl.query(
         sqlQueries.totalInputVATToDate,
-        {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
+        {replacements: [qEnd], type: sequelizeQTSelect});
 
       timeIt(fromStart);
 
       netSalesToDateP = data.sqAdmin.query(
         sqlQueries.netSalesToDate,
-        {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
+        {replacements: [qEnd], type: sequelizeQTSelect});
 
       timeIt(fromStart);
 
       netPurchasesToDateP = data.sqPl.query(
         sqlQueries.netPurchasesToDate,
-        {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
+        {replacements: [qEnd], type: sequelizeQTSelect});
 
       timeIt(fromStart);
 
       totalECPurchasesToDateP = data.sqPl.query(
         sqlQueries.totalECPurchasesToDate,
-        {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
+        {replacements: [qEnd], type: sequelizeQTSelect});
 
       timeIt(fromStart);
 
       totalECSalesToDateP = data.sqAdmin.query(
         sqlQueries.totalECSalesToDate,
-        {replacements: [qEnd], type: data.Sequelize.QueryTypes.SELECT});
+        {replacements: [qEnd], type: sequelizeQTSelect});
 
       timeIt(fromStart);
 
@@ -118,30 +118,37 @@ const getTrialReturn = (month, year) => {
         Inputs: Math.round(
           netPurchasesToDate[0].total -
           totalSubmitted[0]['InputTotals']),
+
         Outputs: Math.round(
           netSalesToDate[0].total -
           totalOutputVATToDate[0].value -
           totalSubmitted[0].OutputTotals),
+
         InputVAT: (
           totalInputVATToDate[0]['inputVAT'] -
           totalSubmitted[0].InputVAT
         ).toFixed(2),
+
         OutputVAT: (
           totalOutputVATToDate[0].value -
           totalSubmitted[0].OutputVAT
         ).toFixed(2),
+
         VATPayable: (
           (totalOutputVATToDate[0].value - totalSubmitted[0].OutputVAT) -
           (totalInputVATToDate[0]['inputVAT'] - totalSubmitted[0].InputVAT)
         ).toFixed(2),
+
         ECPurchases: Math.round(
           totalECPurchasesToDate[0]['ecPurchases'] -
           totalSubmitted[0].ECPurchases
         ) || 0,
+
         ECSales: Math.round(
           totalECSalesToDate[0]['ecSales'] -
           totalSubmitted[0].ECSales
         ) || 0
+
       }
     };
 
