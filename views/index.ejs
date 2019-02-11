@@ -3,12 +3,49 @@
 <html lang="en">
 <body>
 <%
+let i;
 console.log(loggedIn === null);
-if (loggedIn === null) {%>
-    <a href="userCall">Log in via HMRC</a>
-<% } else {%>
+    if (!loggedIn) {
+
+%>
+    <a href="login">Log in via HMRC</a>
+<%
+} else {
+%>
     <a href="logout">Log me off</a>
     <div id="results"></div>
-<% } %>
+<%
+}
+if (data && data['obligations']) {
+%>
+  <h2>Obligations: </h2>
+<%
+    for (i = 0; i < data.obligations.length; i++) {
+
+%>
+    <hr/>
+    <%
+        ob = data.obligations[i];
+        console.log(Object.keys(ob))
+        Object.keys(ob).forEach((key) => {
+%>
+    <div><%= key %></div><div><%= ob[key] %></div>
+<%
+
+})
+        if(ob.status === 'O') {
+            if(data['returnData']) {
+%>
+    <div><%= JSON.stringify(data['returnData']) %></div>
+    <%
+        } else {
+%>
+    <a href="prepReturn">Prepare return</a>
+<%
+      }
+    }
+  }
+}
+%>
 </body>
 </html>
