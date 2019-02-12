@@ -23,6 +23,7 @@ const apiBaseUrl = process.env.HMRC_API_BASE_URL;
 const serviceName = 'organisations/vat';
 const superAgent = require('superagent');
 const prepReturn = require('./vat-return/prepReturn');
+const endpointCallbacks = require('./hmrc-api/endpoints');
 
 const oauth2 = simpleOauthModule.create({
   client: {
@@ -41,89 +42,6 @@ const authorizationUri = oauth2.authorizationCode.authorizeURL({
   response_type: 'code',
   scope: oauthScope,
 });
-
-
-const app = express();
-
-app.use(cookieSession({
-  name: 'session',
-  keys: ['oauth2Token', 'caller'],
-  maxAge: 10 * 60 * 60 * 1000 // 10 hours
-}));
-
-app.set('view engine', 'ejs');
-
-app.get('/', (req, res) => {
-  log.debug(req.session);
-
-  //get obligations
-
-  res.render('index', {
-    loggedIn: req.session.oauth2Token || false,
-    data: req.session['data']
-  });
-});
-
-app.get("/login",(req,res) => {
-  if(req.session.oauth2Token){
-    var accessToken = oauth2.accessToken.create(req.session.oauth2Token);
-
-    if(accessToken.expired()){
-      log.info('Token expired: ', accessToken.token);
-      accessToken.refresh()
-        .then((result) => {
-          log.info('Refreshed token: ', result.token);
-          req.session.oauth2Token = result.token;
-          callApi(userRestrictedEndpoint, res, result.token.access_token, req, '/');
-        })
-        .catch((error) => {
-          log.error('Error refreshing token: ', error);
-          res.send(error);
-        });
-    } else {
-      log.info('Using token from session: ', accessToken.token);
-      callApi(userRestrictedEndpoint, res, accessToken.token.access_token, req, '/');
-    }
-  } else {
-    log.info('Need to request token')
-    req.session.caller = '/login';
-    res.redirect(authorizationUri);
-  }
-});
-
-app.get('/auth/callback', (req, res) => {
-  const options = {
-    redirect_uri: redirectUri,
-    code: req.query.code
-  };
-  log.info(options);
-
-  oauth2.authorizationCode.getToken(options, (error, result) => {
-    if (error) {
-      log.error('Access Token Error: ', error);
-      return res.json('Authentication failed');
-    }
-
-    log.info('Got token: ', result);
-    // save token on session and return to calling page
-    req.session.oauth2Token = result;
-    res.redirect('/login');
-  });
-});
-
-app.get("/logout", (req, res) => {
-  req.session = null;
-  res.redirect('/');
-});
-
-app.get("/prepReturn", async (req, res) => {
-  let returnData = await prepReturn();
-  if (req.session.data) {
-    req.session.data['returnData'] = returnData;
-  }
-  res.redirect('/');
-});
-
 
 const callApi = (resource, res, bearerToken, req, redir) => {
   const acceptHeader = `application/vnd.hmrc.${serviceVersion}+json`;
@@ -160,6 +78,53 @@ const handleResponse = (res, err, apiResponse, req, redir) => {
     }
   }
 };
+
+const app = express();
+
+app.use(cookieSession({
+  name: 'session',
+  keys: ['oauth2Token', 'caller'],
+  maxAge: 10 * 60 * 60 * 1000 // 10 hours
+}));
+
+app.set('view engine', 'ejs');
+
+app.get('/', (req, res) => {
+  log.debug(req.session);
+
+  //get obligations
+
+  res.render('index', {
+    loggedIn: req.session.oauth2Token || false,
+    data: req.session['data']
+  });
+});
+
+app.get("/login",(req,res) => {
+    return endpointCallbacks.authenticate(
+      req,
+      res,
+      userRestrictedEndpoint,
+      authorizationUri,
+      '/',
+      handleResponse);
+  }
+);
+
+app.get('/auth/callback', (req, res) => endpointCallbacks.authCallback(req, res, redirectUri));
+
+app.get("/logout", (req, res) => {
+  req.session = null;
+  res.redirect('/');
+});
+
+app.get("/prepReturn", async (req, res) => {
+  let returnData = await prepReturn();
+  if (req.session.data) {
+    req.session.data['returnData'] = returnData;
+  }
+  res.redirect('/');
+});
 
 function str(token){
   return `[A:${token.access_token} R:${token.refresh_token} X:${token.expires_at}]`;
