@@ -2,62 +2,21 @@ require('dotenv').config();
 
 const express = require('express');
 const winston = require('winston');
+const cookieSession = require('cookie-session');
+
+const prepReturn = require('./vat-return/prepReturn');
+const endpointCallbacks = require('./hmrc-api/endpoints');
+
 const log = winston.createLogger({
   transports: [
     new winston.transports.Console()
   ]
 });
 
-const serviceVersion = '1.0';
-
-//TODO - upgrade to latest simple-oauth2
-const simpleOauthModule = require('simple-oauth2');
-
 const appPort = process.env.APP_PORT;
-const oauthScope = 'read:vat write:vat';
-
-const cookieSession = require('cookie-session');
-const redirectUri = `http://localhost:${appPort}/auth/callback`;
-const userRestrictedEndpoint = '/666679046/obligations?from=2018-01-01&to=2018-12-31'
-const apiBaseUrl = process.env.HMRC_API_BASE_URL;
-const serviceName = 'organisations/vat';
-const superAgent = require('superagent');
-const prepReturn = require('./vat-return/prepReturn');
-const endpointCallbacks = require('./hmrc-api/endpoints');
-
-const oauth2 = simpleOauthModule.create({
-  client: {
-    id: process.env.HMRC_API_CLIENT_ID,
-    secret: process.env.HMRC_API_CLIENT_SECRET,
-  },
-  auth: {
-    tokenHost: apiBaseUrl,
-    tokenPath: '/oauth/token',
-    authorizePath: '/oauth/authorize',
-  },
-});
-
-const authorizationUri = oauth2.authorizationCode.authorizeURL({
-  redirect_uri: redirectUri,
-  response_type: 'code',
-  scope: oauthScope,
-});
-
-const callApi = (resource, res, bearerToken, req, redir) => {
-  const acceptHeader = `application/vnd.hmrc.${serviceVersion}+json`;
-  const url = apiBaseUrl + serviceName + resource;
-  log.info(`Calling ${url} with Accept: ${acceptHeader}`);
-  const sReq = superAgent
-    .get(url)
-    .accept(acceptHeader);
-
-  if(bearerToken) {
-    log.info('Using bearer token:', bearerToken);
-    sReq.set('Authorization', `Bearer ${bearerToken}`);
-  }
-
-  sReq.end((err, apiResponse) => handleResponse(res, err, apiResponse, req, redir));
-};
+const returnUri = `http://localhost:${appPort}/auth/callback`;
+const userRestrictedEndpoint = `/${process.env.HMRC_API_VRN}/obligations?from=2018-01-01&to=2018-12-31`;
+const docRoot = '/';
 
 const handleResponse = (res, err, apiResponse, req, redir) => {
   if (err || !apiResponse.ok) {
@@ -71,7 +30,7 @@ const handleResponse = (res, err, apiResponse, req, redir) => {
     }
 
     if (redir) {
-      res.redirect('/');
+      res.redirect(docRoot);
     }
     else {
       res.send(apiResponse.body);
@@ -89,7 +48,7 @@ app.use(cookieSession({
 
 app.set('view engine', 'ejs');
 
-app.get('/', (req, res) => {
+app.get(docRoot, (req, res) => {
   log.debug(req.session);
 
   //get obligations
@@ -105,17 +64,17 @@ app.get("/login",(req,res) => {
       req,
       res,
       userRestrictedEndpoint,
-      authorizationUri,
-      '/',
+      returnUri,
+      docRoot,
       handleResponse);
   }
 );
 
-app.get('/auth/callback', (req, res) => endpointCallbacks.authCallback(req, res, redirectUri));
+app.get('/auth/callback', (req, res) => endpointCallbacks.authCallback(req, res, returnUri));
 
 app.get("/logout", (req, res) => {
   req.session = null;
-  res.redirect('/');
+  res.redirect(docRoot);
 });
 
 app.get("/prepReturn", async (req, res) => {
@@ -123,13 +82,8 @@ app.get("/prepReturn", async (req, res) => {
   if (req.session.data) {
     req.session.data['returnData'] = returnData;
   }
-  res.redirect('/');
+  res.redirect(docRoot);
 });
-
-function str(token){
-  return `[A:${token.access_token} R:${token.refresh_token} X:${token.expires_at}]`;
-}
-
 
 app.listen(appPort,() => {
   log.info(`Started at http://localhost:${appPort}`);
