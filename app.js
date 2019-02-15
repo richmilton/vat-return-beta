@@ -29,10 +29,10 @@ const handleResponse = (res, err, apiResponse, req, redir) => {
   } else {
     dataItem = apiResponse.body;
     log.info(dataItem);
-    dataItem.forEach(key => {
+    for (let key in dataItem) {
       req.session.data = {};
-    req.session.data[key] = dataItem[key];
-  }) ;
+      req.session.data[key] = dataItem[key];
+    }
 
     if (redir) {
       res.redirect(redir);
