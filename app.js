@@ -22,16 +22,17 @@ const returnUri = `http://localhost:${appPort}${authCallbackPath}`;
 const docRootPath = '/';
 
 const handleResponse = (res, err, apiResponse, req, redir) => {
+  let dataItem;
   if (err || !apiResponse.ok) {
     log.error('Handling error response: ', err);
     res.send(err);
   } else {
     dataItem = apiResponse.body;
     log.info(dataItem);
-    for (let key in dataItem) {
+    dataItem.forEach(key => {
       req.session.data = {};
-      req.session.data[key] = dataItem[key];
-    }
+    req.session.data[key] = dataItem[key];
+  }) ;
 
     if (redir) {
       res.redirect(redir);
@@ -106,7 +107,6 @@ app.get('/submit-return', async (req, res) => {
     {
       hmrcEndpoint: endpoint,                                 //hmrc api endpoint
       appAuthCallbackPath: returnUri,                         //auth callback path
-      //appRespHandlerRedirectPath: docRootPath,                //final destination
       appEndpointPath: `${loginPath}?vrn=${req.query.vrn}`,   //endpoint callback path
       appCallBackHandler: handleResponse,                      //response handler
       reqBody: submitData['hmrcValues'],
@@ -124,11 +124,6 @@ app.get('/view-return', (req, res) => {
     {
       hmrcEndpoint: endpoint,                                 //hmrc api endpoint
       appAuthCallbackPath: returnUri,                         //auth callback path
-      //appRespHandlerRedirectPath: docRootPath,                //final destination
-      //appEndpointPath: `${loginPath}?vrn=${req.query.vrn}`,   //endpoint callback path
-      appCallBackHandler: handleResponse,                      //response handler
-      //reqBody: submitData['hmrcValues'],
-      //method: 'post'
     });
 });
 
