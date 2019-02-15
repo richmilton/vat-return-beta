@@ -5,6 +5,7 @@ const winston = require('winston');
 const cookieSession = require('cookie-session');
 
 const prepReturn = require('./vat-return/prepReturn');
+const postReturn = require('./vat-return/postReturn');
 const endpointCallbacks = require('./hmrc-api/endpoints');
 
 const log = winston.createLogger({
@@ -14,9 +15,11 @@ const log = winston.createLogger({
 });
 
 const appPort = process.env.APP_PORT;
-const returnUri = `http://localhost:${appPort}/auth/callback`;
+const authCallbackPath = '/auth/callback';
+const loginPath = '/login';
+const returnUri = `http://localhost:${appPort}${authCallbackPath}`;
 //const userRestrictedEndpoint = `/${process.env.HMRC_API_VRN}/obligations?from=2018-01-01&to=2018-12-31`;
-const docRoot = '/';
+const docRootPath = '/';
 
 const handleResponse = (res, err, apiResponse, req, redir) => {
   if (err || !apiResponse.ok) {
@@ -31,7 +34,7 @@ const handleResponse = (res, err, apiResponse, req, redir) => {
     }
 
     if (redir) {
-      res.redirect(docRoot);
+      res.redirect(redir);
     }
     else {
       res.send(apiResponse.body);
@@ -49,7 +52,7 @@ app.use(cookieSession({
 
 app.set('view engine', 'ejs');
 
-app.get(docRoot, (req, res) => {
+app.get(docRootPath, (req, res) => {
   log.debug(req.session);
 
   //get obligations
@@ -60,25 +63,28 @@ app.get(docRoot, (req, res) => {
   });
 });
 
-app.get("/login",(req,res) => {
+app.get(loginPath, (req, res) => {
   let endpoint = `/${req.query.vrn}/obligations?from=2018-01-01&to=2018-12-31`;
   req.session.returnto = '/login?vrn=' + req.query.vrn;
+  req.session.vrn = req.query.vrn;
     return endpointCallbacks.authenticate(
       req,
       res,
-      endpoint,
-      returnUri,
-      docRoot,
-      '/login?vrn=' + req.query.vrn,
-      handleResponse);
+      {
+        hmrcEndpoint: endpoint,                                 //hmrc api endpoint
+        appAuthCallbackPath: returnUri,                         //auth callback path
+        appRespHandlerRedirectPath: docRootPath,                //final destination
+        appEndpointPath: `${loginPath}?vrn=${req.query.vrn}`,   //endpoint callback path
+        appCallBackHandler: handleResponse                      //response handler
+    });
   }
 );
 
-app.get('/auth/callback', (req, res) => endpointCallbacks.authCallback(req, res, returnUri, req.session.returnto));
+app.get(authCallbackPath, (req, res) => endpointCallbacks.authCallback(req, res, returnUri, req.session.returnto));
 
 app.get("/logout", (req, res) => {
   req.session = null;
-  res.redirect(docRoot);
+  res.redirect(docRootPath);
 });
 
 app.get("/prepReturn", async (req, res) => {
@@ -86,7 +92,44 @@ app.get("/prepReturn", async (req, res) => {
   if (req.session.data) {
     req.session.data['returnData'] = returnData;
   }
-  res.redirect(docRoot);
+  res.redirect(docRootPath);
+});
+
+app.get('/submit-return', async (req, res) => {
+  const periodKey = req.query['periodKey'];
+  const vrn = req.session.vrn;
+  let endpoint = `/${vrn}/returns`;
+  let submitData = await postReturn(periodKey);
+  return endpointCallbacks.authenticate(
+    req,
+    res,
+    {
+      hmrcEndpoint: endpoint,                                 //hmrc api endpoint
+      appAuthCallbackPath: returnUri,                         //auth callback path
+      //appRespHandlerRedirectPath: docRootPath,                //final destination
+      appEndpointPath: `${loginPath}?vrn=${req.query.vrn}`,   //endpoint callback path
+      appCallBackHandler: handleResponse,                      //response handler
+      reqBody: submitData['hmrcValues'],
+      method: 'post'
+    });
+});
+
+app.get('/view-return', (req, res) => {
+  const periodKey = req.query['periodKey'];
+  const vrn = req.session.vrn;
+  let endpoint = `/${vrn}/returns/${periodKey}`;
+  return endpointCallbacks.authenticate(
+    req,
+    res,
+    {
+      hmrcEndpoint: endpoint,                                 //hmrc api endpoint
+      appAuthCallbackPath: returnUri,                         //auth callback path
+      //appRespHandlerRedirectPath: docRootPath,                //final destination
+      //appEndpointPath: `${loginPath}?vrn=${req.query.vrn}`,   //endpoint callback path
+      appCallBackHandler: handleResponse,                      //response handler
+      //reqBody: submitData['hmrcValues'],
+      //method: 'post'
+    });
 });
 
 app.listen(appPort,() => {

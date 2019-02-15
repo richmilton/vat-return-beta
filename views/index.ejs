@@ -23,6 +23,7 @@ if (data && data['obligations']) {
 %>
   <h2>Obligations: </h2>
 <%
+    let periodKey = '';
     for (i = 0; i < data.obligations.length; i++) {
 
 %>
@@ -31,6 +32,7 @@ if (data && data['obligations']) {
         ob = data.obligations[i];
         console.log(Object.keys(ob))
         Object.keys(ob).forEach((key) => {
+            if (key === 'status' && ob[key] === 'O') periodKey = ob['periodKey'];
 %>
     <div><%= key %></div><div><%= ob[key] %></div>
 <%
@@ -40,6 +42,10 @@ if (data && data['obligations']) {
             if(data['returnData']) {
 %>
     <div><%= JSON.stringify(data['returnData']) %></div>
+    <form action="submit-return">
+        <input name="periodKey" type="hidden" value="<%=periodKey%>">
+        <input type="submit" value="Submit VAT Return" />
+    </form>
     <%
         } else {
 %>
@@ -50,5 +56,6 @@ if (data && data['obligations']) {
   }
 }
 %>
+<iframe width="800" height="300" src="http://localhost:8888"></iframe>
 </body>
 </html>

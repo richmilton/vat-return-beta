@@ -19,51 +19,75 @@ const log = winston.createLogger({
   ]
 });
 
-const callApi = (resource, res, bearerToken, req, redir, respCallback) => {
+const callApi = (resource, res, bearerToken, req, options) => {
   const acceptHeader = `application/vnd.hmrc.${process.env.HMRC_API_SERVICE_VERSION}+json`;
   const url = process.env.HMRC_API_BASE_URL + process.env.HMRC_API_VAT_SERVICE_NAME + resource;
   log.info(`Calling ${url} with Accept: ${acceptHeader}`);
-  const sReq = superAgent
-    .get(url)
-    .accept(acceptHeader);
+  let sReq;
+  if (options.method === 'post') {
+    sReq = superAgent
+      .post(url)
+      .accept(acceptHeader)
+      .send(options.reqBody);
+  }
+  else {
+    sReq = superAgent
+      .get(url)
+      .accept(acceptHeader);
+  }
 
   if(bearerToken) {
     log.info('Using bearer token:', bearerToken);
     sReq.set('Authorization', `Bearer ${bearerToken}`);
   }
 
-  sReq.end((err, apiResponse) => respCallback(res, err, apiResponse, req, redir));
+  sReq.end((err, apiResponse) => options.appCallBackHandler(res, err, apiResponse, req, options.appRespHandlerRedirectPath));
 };
 
-const authenticate = (req, res, userRestrictedEndpoint, returnUri, redir, returnTo, callback) => {
+const authenticate = (req, res, options) => { //userRestrictedEndpoint, returnUri, redir, returnTo, callback
   const authorizationUri = oauth2.authorizationCode.authorizeURL({
-    redirect_uri: returnUri,
+    redirect_uri: options.appAuthCallbackPath,
     response_type: 'code',
     scope: process.env.HMRC_API_SCOPE,
   });
 
+  //if there's a token in the session get it
   if(req.session.oauth2Token){
     let accessToken = oauth2.accessToken.create(req.session.oauth2Token);
 
+    //if the sessio token has expired refresh it
     if(accessToken.expired()){
       log.info('Token expired: ', accessToken.token);
       accessToken.refresh()
         .then((result) => {
           log.info('Refreshed token: ', result.token);
           req.session.oauth2Token = result.token;
-          callApi(userRestrictedEndpoint, res, result.token['access_token'], req, redir, callback);
+          callApi(
+            options.hmrcEndpoint,
+            res, result.token['access_token'],
+            req,
+            options
+          );
         })
         .catch((error) => {
           log.error('Error refreshing token: ', error);
           res.send(error);
         });
     } else {
+      //session token not expired
       log.info('Using token from session: ', accessToken.token);
-      callApi(userRestrictedEndpoint, res, accessToken.token['access_token'], req, redir, callback);
+      callApi(
+        options.hmrcEndpoint,
+        res,
+        accessToken.token['access_token'],
+        req,
+        options
+      );
     }
   } else {
+    // no freakin token
     log.info('Need to request token');
-    req.session.caller = returnTo; //'/login?vrn=' + req.session.vrn || '' ;
+    req.session.caller = options.appRespHandlerRedirectPath; //'/login?vrn=' + req.session.vrn || '' ;
     res.redirect(authorizationUri);
   }
 };
