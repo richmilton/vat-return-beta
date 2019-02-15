@@ -124,20 +124,20 @@ const getTrialReturn = (month, year) => {
           totalOutputVATToDate[0].value -
           totalSubmitted[0].OutputTotals),
 
-        InputVAT: (
+        InputVAT: parseFloat((
           totalInputVATToDate[0]['inputVAT'] -
           totalSubmitted[0].InputVAT
-        ).toFixed(2),
+        ).toFixed(2)),
 
-        OutputVAT: (
+        OutputVAT: parseFloat((
           totalOutputVATToDate[0].value -
           totalSubmitted[0].OutputVAT
-        ).toFixed(2),
+        ).toFixed(2)),
 
-        VATPayable: (
+        VATPayable: parseFloat((
           (totalOutputVATToDate[0].value - totalSubmitted[0].OutputVAT) -
           (totalInputVATToDate[0]['inputVAT'] - totalSubmitted[0].InputVAT)
-        ).toFixed(2),
+        ).toFixed(2)),
 
         ECPurchases: Math.round(
           totalECPurchasesToDate[0]['ecPurchases'] -

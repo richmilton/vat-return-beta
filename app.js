@@ -15,7 +15,7 @@ const log = winston.createLogger({
 
 const appPort = process.env.APP_PORT;
 const returnUri = `http://localhost:${appPort}/auth/callback`;
-const userRestrictedEndpoint = `/${process.env.HMRC_API_VRN}/obligations?from=2018-01-01&to=2018-12-31`;
+//const userRestrictedEndpoint = `/${process.env.HMRC_API_VRN}/obligations?from=2018-01-01&to=2018-12-31`;
 const docRoot = '/';
 
 const handleResponse = (res, err, apiResponse, req, redir) => {
@@ -24,6 +24,7 @@ const handleResponse = (res, err, apiResponse, req, redir) => {
     res.send(err);
   } else {
     dataItem = apiResponse.body;
+    log.info(dataItem);
     for (let key in dataItem) {
       req.session.data = {};
       req.session.data[key] = dataItem[key];
@@ -60,17 +61,20 @@ app.get(docRoot, (req, res) => {
 });
 
 app.get("/login",(req,res) => {
+  let endpoint = `/${req.query.vrn}/obligations?from=2018-01-01&to=2018-12-31`;
+  req.session.returnto = '/login?vrn=' + req.query.vrn;
     return endpointCallbacks.authenticate(
       req,
       res,
-      userRestrictedEndpoint,
+      endpoint,
       returnUri,
       docRoot,
+      '/login?vrn=' + req.query.vrn,
       handleResponse);
   }
 );
 
-app.get('/auth/callback', (req, res) => endpointCallbacks.authCallback(req, res, returnUri));
+app.get('/auth/callback', (req, res) => endpointCallbacks.authCallback(req, res, returnUri, req.session.returnto));
 
 app.get("/logout", (req, res) => {
   req.session = null;

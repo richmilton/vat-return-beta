@@ -35,7 +35,7 @@ const callApi = (resource, res, bearerToken, req, redir, respCallback) => {
   sReq.end((err, apiResponse) => respCallback(res, err, apiResponse, req, redir));
 };
 
-const authenticate = (req, res, userRestrictedEndpoint, returnUri, redir, callback) => {
+const authenticate = (req, res, userRestrictedEndpoint, returnUri, redir, returnTo, callback) => {
   const authorizationUri = oauth2.authorizationCode.authorizeURL({
     redirect_uri: returnUri,
     response_type: 'code',
@@ -63,12 +63,12 @@ const authenticate = (req, res, userRestrictedEndpoint, returnUri, redir, callba
     }
   } else {
     log.info('Need to request token');
-    req.session.caller = '/login';
+    req.session.caller = returnTo; //'/login?vrn=' + req.session.vrn || '' ;
     res.redirect(authorizationUri);
   }
 };
 
-const authCallback = (req, res, returnUri) => {
+const authCallback = (req, res, returnUri, returnTo) => {
   const options = {
     redirect_uri: returnUri,
     code: req.query.code
@@ -84,7 +84,7 @@ const authCallback = (req, res, returnUri) => {
     log.info('Got token: ', result);
     // save token on session and return to calling page
     req.session.oauth2Token = result;
-    res.redirect('/login');
+    res.redirect(returnTo);//'/login?vrn=' + req.session.vrn || '');
   });
 };
 
