@@ -18,7 +18,6 @@ const appPort = process.env.APP_PORT;
 const authCallbackPath = '/auth/callback';
 const loginPath = '/login';
 const returnUri = `http://localhost:${appPort}${authCallbackPath}`;
-//const userRestrictedEndpoint = `/${process.env.HMRC_API_VRN}/obligations?from=2018-01-01&to=2018-12-31`;
 const docRootPath = '/';
 
 const handleResponse = (res, err, apiResponse, req, redir) => {
@@ -29,9 +28,11 @@ const handleResponse = (res, err, apiResponse, req, redir) => {
   } else {
     dataItem = apiResponse.body;
     log.info(dataItem);
-    for (let key in dataItem) {
-      req.session.data = {};
-      req.session.data[key] = dataItem[key];
+    if (dataItem) {
+      Object.keys(dataItem).forEach(key => {
+        req.session.data = {};
+        req.session.data[key] = dataItem[key];
+      });
     }
 
     if (redir) {
