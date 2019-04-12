@@ -1,7 +1,18 @@
-const data = require('../data/index');
-const sqlQueries = require('./sql-queries');
+const {
+  Sequelize: { QueryTypes: { SELECT } },
+  sqAdmin,
+  sqPl,
+} = require('../data/index');
+const {
+  totalECPurchasesToDate,
+  totalECSalesToDate,
+  totalInputVATToDate,
+  totalOutputVATToDate,
+  totalSubmittedSql,
+  netPurchasesToDate,
+  netSalesToDate,
+} = require('./sql-queries');
 const timeIt = require('../utilities/timer');
-const sequelizeQTSelect = data.Sequelize.QueryTypes.SELECT;
 
 const getTrialReturn = (month, year) => {
 
@@ -13,29 +24,29 @@ const getTrialReturn = (month, year) => {
     let netSalesToDateP;
     let totalInputVATToDateP;
     let totalOutputVATToDateP;
-    let totalInputVATToDate;
-    let totalOutputVATToDate;
-    let netSalesToDate;
-    let totalECSalesToDate;
-    let totalECPurchasesToDate;
-    let netPurchasesToDate;
+    let totalInputVATToDateR;
+    let totalOutputVATToDateR;
+    let netSalesToDateR;
+    let totalECSalesToDateR;
+    let totalECPurchasesToDateR;
+    let netPurchasesToDateR;
     let fromStart = Date.now();
     let qEnd;
-    let totalSubmitted;
+    let totalSubmittedR;
 
     try {
-      console.log('start select from vathistory');
+      console.log('start select from vathistory', totalSubmittedSql, SELECT );
 
-      totalSubmitted = await data.sqPl.query(
-        sqlQueries.totalSubmittedSql,
-        {type: sequelizeQTSelect});
+      totalSubmittedR = await sqPl.query(
+        totalSubmittedSql,
+        {type: SELECT});
 
       timeIt(fromStart);
 
-      year = year || totalSubmitted[0]['NextEndYear'];
-      month = month || totalSubmitted[0]['NextEndMonth'];
+      year = year || totalSubmittedR[0]['NextEndYear'];
+      month = month || totalSubmittedR[0]['NextEndMonth'];
 
-      if (!totalSubmitted.length) reject(new Error('No data returned'));
+      if (!totalSubmittedR.length) reject(new Error('No data returned'));
       if (!year) reject(new Error('Year not found or passed'));
       if (!month) reject(new Error('Month not found or passed'));
 
@@ -53,48 +64,48 @@ const getTrialReturn = (month, year) => {
     try {
       console.log('start gathering VAT data');
 
-      totalOutputVATToDateP = data.sqAdmin.query(
-        sqlQueries.totalOutputVATToDate,
-        {replacements: [qEnd], type: sequelizeQTSelect});
+      totalOutputVATToDateP = sqAdmin.query(
+        totalOutputVATToDate,
+        {replacements: [qEnd], type: SELECT});
 
       timeIt(fromStart);
 
-      totalInputVATToDateP = data.sqPl.query(
-        sqlQueries.totalInputVATToDate,
-        {replacements: [qEnd], type: sequelizeQTSelect});
+      totalInputVATToDateP = sqPl.query(
+        totalInputVATToDate,
+        {replacements: [qEnd], type: SELECT});
 
       timeIt(fromStart);
 
-      netSalesToDateP = data.sqAdmin.query(
-        sqlQueries.netSalesToDate,
-        {replacements: [qEnd], type: sequelizeQTSelect});
+      netSalesToDateP = sqAdmin.query(
+        netSalesToDate,
+        {replacements: [qEnd], type: SELECT});
 
       timeIt(fromStart);
 
-      netPurchasesToDateP = data.sqPl.query(
-        sqlQueries.netPurchasesToDate,
-        {replacements: [qEnd], type: sequelizeQTSelect});
+      netPurchasesToDateP = sqPl.query(
+        netPurchasesToDate,
+        {replacements: [qEnd], type: SELECT});
 
       timeIt(fromStart);
 
-      totalECPurchasesToDateP = data.sqPl.query(
-        sqlQueries.totalECPurchasesToDate,
-        {replacements: [qEnd], type: sequelizeQTSelect});
+      totalECPurchasesToDateP = sqPl.query(
+        totalECPurchasesToDate,
+        {replacements: [qEnd], type: SELECT});
 
       timeIt(fromStart);
 
-      totalECSalesToDateP = data.sqAdmin.query(
-        sqlQueries.totalECSalesToDate,
-        {replacements: [qEnd], type: sequelizeQTSelect});
+      totalECSalesToDateP = sqAdmin.query(
+        totalECSalesToDate,
+        {replacements: [qEnd], type: SELECT});
 
       timeIt(fromStart);
 
-      totalInputVATToDate = await totalInputVATToDateP;
-      totalOutputVATToDate = await totalOutputVATToDateP;
-      netSalesToDate = await netSalesToDateP;
-      netPurchasesToDate = await netPurchasesToDateP;
-      totalECPurchasesToDate = await totalECPurchasesToDateP;
-      totalECSalesToDate = await totalECSalesToDateP;
+      totalInputVATToDateR = await totalInputVATToDateP;
+      totalOutputVATToDateR = await totalOutputVATToDateP;
+      netSalesToDateR = await netSalesToDateP;
+      netPurchasesToDateR = await netPurchasesToDateP;
+      totalECPurchasesToDateR = await totalECPurchasesToDateP;
+      totalECSalesToDateR = await totalECSalesToDateP;
     }
     catch (e) {
       reject(e);
@@ -103,50 +114,50 @@ const getTrialReturn = (month, year) => {
       console.log('end gathering VAT data');
     }
 
-    let trialJson = {
+    const trialJson = {
       //grossSales: gross,
-      submitted: totalSubmitted[0],
+      submitted: totalSubmittedR[0],
       due: {
-        InputTotals: netPurchasesToDate[0].total,
-        OutputTotals: netSalesToDate[0].total - totalOutputVATToDate[0].value,
-        InputVAT: totalInputVATToDate[0]['inputVAT'],
-        OutputVAT: totalOutputVATToDate[0].value,
-        ECPurchases: totalECPurchasesToDate[0]['ecPurchases'],
-        ECSales: totalECSalesToDate[0]['ecSales']
+        InputTotals: netPurchasesToDateR[0].total,
+        OutputTotals: netSalesToDateR[0].total - totalOutputVATToDateR[0].value,
+        InputVAT: totalInputVATToDateR[0]['inputVAT'],
+        OutputVAT: totalOutputVATToDateR[0].value,
+        ECPurchases: totalECPurchasesToDateR[0]['ecPurchases'],
+        ECSales: totalECSalesToDateR[0]['ecSales']
       },
       declare: {
         Inputs: Math.round(
-          netPurchasesToDate[0].total -
-          totalSubmitted[0]['InputTotals']),
+          netPurchasesToDateR[0].total -
+          totalSubmittedR[0]['InputTotals']),
 
         Outputs: Math.round(
-          netSalesToDate[0].total -
-          totalOutputVATToDate[0].value -
-          totalSubmitted[0].OutputTotals),
+          netSalesToDateR[0].total -
+          totalOutputVATToDateR[0].value -
+          totalSubmittedR[0].OutputTotals),
 
         InputVAT: parseFloat((
-          totalInputVATToDate[0]['inputVAT'] -
-          totalSubmitted[0].InputVAT
+          totalInputVATToDateR[0]['inputVAT'] -
+          totalSubmittedR[0].InputVAT
         ).toFixed(2)),
 
         OutputVAT: parseFloat((
-          totalOutputVATToDate[0].value -
-          totalSubmitted[0].OutputVAT
+          totalOutputVATToDateR[0].value -
+          totalSubmittedR[0].OutputVAT
         ).toFixed(2)),
 
         VATPayable: parseFloat((
-          (totalOutputVATToDate[0].value - totalSubmitted[0].OutputVAT) -
-          (totalInputVATToDate[0]['inputVAT'] - totalSubmitted[0].InputVAT)
+          (totalOutputVATToDateR[0].value - totalSubmittedR[0].OutputVAT) -
+          (totalInputVATToDateR[0]['inputVAT'] - totalSubmittedR[0].InputVAT)
         ).toFixed(2)),
 
         ECPurchases: Math.round(
-          totalECPurchasesToDate[0]['ecPurchases'] -
-          totalSubmitted[0].ECPurchases
+          totalECPurchasesToDateR[0]['ecPurchases'] -
+          totalSubmittedR[0].ECPurchases
         ) || 0,
 
         ECSales: Math.round(
-          totalECSalesToDate[0]['ecSales'] -
-          totalSubmitted[0].ECSales
+          totalECSalesToDateR[0]['ecSales'] -
+          totalSubmittedR[0].ECSales
         ) || 0
 
       }

@@ -1,7 +1,7 @@
 const Sequelize = require ("sequelize");
 require('dotenv').config();
 
-let sqAdmin = new Sequelize(process.env.ADMIN_DBNAME,
+const sqAdmin = new Sequelize(process.env.ADMIN_DBNAME,
   process.env.ADMIN_DBUSER,
   process.env.ADMIN_DBPASSWORD,
   {
@@ -16,7 +16,7 @@ let sqAdmin = new Sequelize(process.env.ADMIN_DBNAME,
     }
   });
 
-let sqPl = new Sequelize(process.env.PL_DBNAME,
+const sqPl = new Sequelize(process.env.PL_DBNAME,
   process.env.PL_DBUSER,
   process.env.PL_DBPASSWORD,
   {
@@ -31,10 +31,10 @@ let sqPl = new Sequelize(process.env.PL_DBNAME,
     }
   });
 
-let data = {};
-data.sqAdmin = sqAdmin;
-data.sqPl = sqPl;
-data.Sequelize = Sequelize;
-
+const data = {
+  sqAdmin,
+  sqPl,
+  Sequelize,
+};
 
 module.exports = data;
