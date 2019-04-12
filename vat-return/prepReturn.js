@@ -35,7 +35,7 @@ const getTrialReturn = (month, year) => {
     let totalSubmittedR;
 
     try {
-      console.log('start select from vathistory', totalSubmittedSql, SELECT );
+      console.log('start select from vathistory');
 
       totalSubmittedR = await sqPl.query(
         totalSubmittedSql,
