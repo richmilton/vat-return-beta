@@ -7,7 +7,6 @@ const sqAdmin = new Sequelize(process.env.ADMIN_DBNAME,
   {
     host: process.env.ADMIN_DBHOST,
     dialect: process.env.DBDIALECT,
-    operatorsAliases: false,
     pool: {
       max: 5,
       min: 0,
@@ -22,7 +21,6 @@ const sqPl = new Sequelize(process.env.PL_DBNAME,
   {
     host: process.env.PL_DBHOST,
     dialect: process.env.DBDIALECT,
-    operatorsAliases: false,
     pool: {
       max: 5,
       min: 0,

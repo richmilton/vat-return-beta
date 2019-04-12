@@ -16,8 +16,8 @@ const oauth2 = simpleOauthModule.create({
   },
 });
 
-let auth = {};
-
-auth.oauth2 = oauth2;
+let auth = {
+  oauth2,
+};
 
 module.exports = auth;
