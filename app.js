@@ -129,5 +129,6 @@ app.get('/view-return', (req, res) => {
 });
 
 app.listen(appPort,() => {
+  log.debug('debugging!');
   log.info(`Started at http://localhost:${appPort}`);
 });
