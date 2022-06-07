@@ -50,7 +50,7 @@ const getTrialReturn = (month, year) => {
       if (!year) reject(new Error('Year not found or passed'));
       if (!month) reject(new Error('Month not found or passed'));
 
-      qEnd = `${year}-${month}-31`;
+      qEnd = '2022-06-30';// `${year}-${month-1}-31`;
 
       console.log('Preparing return values for ' + qEnd);
     }
@@ -126,11 +126,11 @@ const getTrialReturn = (month, year) => {
         ECSales: totalECSalesToDateR[0]['ecSales']
       },
       declare: {
-        Inputs: Math.round(
+        Inputs: (
           netPurchasesToDateR[0].total -
           totalSubmittedR[0]['InputTotals']),
 
-        Outputs: Math.round(
+        Outputs: (
           netSalesToDateR[0].total -
           totalOutputVATToDateR[0].value -
           totalSubmittedR[0].OutputTotals),
