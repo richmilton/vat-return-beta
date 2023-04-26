@@ -50,7 +50,7 @@ const getTrialReturn = (month, year) => {
       if (!year) reject(new Error('Year not found or passed'));
       if (!month) reject(new Error('Month not found or passed'));
 
-      qEnd = '2022-06-30';// `${year}-${month-1}-31`;
+      qEnd = '2023-03-31';// `${year}-${month-1}-31`;
 
       console.log('Preparing return values for ' + qEnd);
     }

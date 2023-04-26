@@ -2,7 +2,10 @@ const expect = require('chai').expect;
 const prepReturn = require('../../vat-return/prepReturn');
 const postReturn = require('../../vat-return/postReturn');
 
+const timeout = 10000;
+
 describe('vat-return.prepReturn()', function () {
+  this.timeout(timeout)
   it('should return JSON containing 3 objects containing 11, 6 and 7 properties', async function () {
 
     let data = await prepReturn();
@@ -17,6 +20,7 @@ describe('vat-return.prepReturn()', function () {
 });
 
 describe('vat-return.postReturn()', function () {
+  this.timeout(timeout)
   it('should return JSON containing 31 objects containing 11 properties', async function () {
 
     let data = await postReturn();
