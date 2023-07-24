@@ -14,7 +14,7 @@ const {
 } = require('./sql-queries');
 const timeIt = require('../utilities/timer');
 
-const getTrialReturn = (month, year) => {
+const getTrialReturn = () => {
 
   return new Promise(async (resolve, reject) => {
 
@@ -43,14 +43,11 @@ const getTrialReturn = (month, year) => {
 
       timeIt(fromStart);
 
-      year = year || totalSubmittedR[0]['NextEndYear'];
-      month = month || totalSubmittedR[0]['NextEndMonth'];
-
       if (!totalSubmittedR.length) reject(new Error('No data returned'));
-      if (!year) reject(new Error('Year not found or passed'));
-      if (!month) reject(new Error('Month not found or passed'));
+      // if (!year) reject(new Error('Year not found or passed'));
+      // if (!month) reject(new Error('Month not found or passed'));
 
-      qEnd = '2023-03-31';// `${year}-${month-1}-31`;
+      qEnd = totalSubmittedR[0]['NextEndDate'];
 
       console.log('Preparing return values for ' + qEnd);
     }
@@ -100,12 +97,21 @@ const getTrialReturn = (month, year) => {
 
       timeIt(fromStart);
 
-      totalInputVATToDateR = await totalInputVATToDateP;
-      totalOutputVATToDateR = await totalOutputVATToDateP;
-      netSalesToDateR = await netSalesToDateP;
-      netPurchasesToDateR = await netPurchasesToDateP;
-      totalECPurchasesToDateR = await totalECPurchasesToDateP;
-      totalECSalesToDateR = await totalECSalesToDateP;
+      [
+        totalInputVATToDateR,
+        totalOutputVATToDateR,
+        netSalesToDateR,
+        netPurchasesToDateR,
+        totalECPurchasesToDateR,
+        totalECSalesToDateR
+      ] = await Promise.all([
+        totalInputVATToDateP,
+        totalOutputVATToDateP,
+        netSalesToDateP,
+        netPurchasesToDateP,
+        totalECPurchasesToDateP,
+        totalECSalesToDateP
+      ])
     }
     catch (e) {
       reject(e);
@@ -158,7 +164,11 @@ const getTrialReturn = (month, year) => {
         ECSales: Math.round(
           totalECSalesToDateR[0]['ecSales'] -
           totalSubmittedR[0].ECSales
-        ) || 0
+        ) || 0,
+
+        QStart: totalSubmittedR[0]['NextVATPeriodBegin'],
+
+        QEnd: qEnd
 
       }
     };

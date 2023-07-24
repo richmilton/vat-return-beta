@@ -1,5 +1,12 @@
 require('dotenv').config();
 
+const {
+  Sequelize: { QueryTypes: { INSERT } },
+  sqPl,
+} = require('./data/index');
+
+const { insertVatReturn } = require('./vat-return/sql-queries');
+
 const express = require('express');
 const winston = require('winston');
 const cookieSession = require('cookie-session');
@@ -113,6 +120,53 @@ app.get('/submit-return', async (req, res) => {
       reqBody: submitData['hmrcValues'],
       method: 'post'
     });
+});
+
+app.get('/post-return', async (req, res) => {
+  const periodKey = req.query['periodKey'];
+  const {
+    canBeSubmitted,
+    qBegin,
+    qEnd,
+    hmrcValues
+  } = await postReturn(periodKey);
+
+  if (canBeSubmitted) {
+    // insert
+    const insertSales = hmrcValues.totalValueSalesExVAT.toFixed(2);
+    const insertPurchases = hmrcValues.totalValuePurchasesExVAT.toFixed(2);
+    const insertEcp = hmrcValues.totalAcquisitionsExVAT.toFixed(2);
+    const insertEcs = hmrcValues.totalValueGoodsSuppliedExVAT.toFixed(2);
+
+    const query = sqPl.query(
+      insertVatReturn,
+      {
+        type: INSERT,
+        replacements: [
+          insertPurchases,
+          hmrcValues.vatReclaimedCurrPeriod,
+          insertSales,
+          hmrcValues.totalVatDue,
+          qBegin,
+          qEnd,
+          insertEcp,
+          insertEcs
+        ]
+      }
+    )
+
+    await query;
+
+    // declare
+    hmrcValues.totalValueSalesExVAT = hmrcValues.totalValueSalesExVAT.toFixed();
+    hmrcValues.totalValuePurchasesExVAT = hmrcValues.totalValuePurchasesExVAT.toFixed();
+    hmrcValues.totalValueGoodsSuppliedExVAT = hmrcValues.totalValueGoodsSuppliedExVAT.toFixed();
+    hmrcValues.totalAcquisitionsExVAT = hmrcValues.totalAcquisitionsExVAT.toFixed();
+
+    res.send(hmrcValues);
+  } else {
+    res.send({ message: 'Vat period not closed' })
+  }
 });
 
 app.get('/view-return', (req, res) => {

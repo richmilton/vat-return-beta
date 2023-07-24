@@ -1,8 +1,7 @@
 module.exports = {
 
   totalSubmittedSql: "SELECT " +
-    "month(date_add(max(EndDate), interval 3 month)) as NextEndMonth, " +
-    "year(date_add(max(EndDate), interval 3 month)) as NextEndYear, " +
+    "date(date_add(max(EndDate), interval 3 month)) as NextEndDate, " +
     "if(now()<date_add(max(EndDate), interval 3 month),0,1) as CanBeSubmitted, " +
     "date_add(max(EndDate), interval 1 day) as NextVATPeriodBegin, " +
     "date_add(max(EndDate), interval 3 month) as NextVATPeriodEnd, " +
@@ -39,6 +38,9 @@ module.exports = {
     "sum(if(PurchaseCurrency=978,round(PurchaseAmount*Rate),PurchaseAmount)/100) as ecSales " +
     "FROM ordertable o inner join retailers r on Retailer_id=o.RetailerId " +
     "inner join exchange_rates on month(MonthStart)=month(InvoiceDate) and year(MonthStart)=year(InvoiceDate) " +
-    "inner join address a on r.Retailer_Id=a.RetailerId where CpiResultsCode in (0,100) and InvoiceDate >= '2007-01-01' and InvoiceDate <= ? and Country<>'826'"
+    "inner join address a on r.Retailer_Id=a.RetailerId where CpiResultsCode in (0,100) and InvoiceDate >= '2007-01-01' and InvoiceDate <= ? and Country<>'826'",
 
+  insertVatReturn: "INSERT " +
+    "into vathistory (ExecutionDate, Status, Inputs, InputVAT, Outputs, OutputVAT, BeginDate, EndDate, ECPurchases, ECSales) " +
+    "values(now(), 'Actual', ?, ?, ?, ?, ?, ?, ?, ?)"
 };

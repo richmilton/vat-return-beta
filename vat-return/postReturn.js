@@ -10,10 +10,12 @@ const postReturn = (periodKey) => {
     let decValues = values['declare'];
 
     if(!decValues) reject({error: 'no values found'});
-    //if(!values.CanBeSubmitted) reject({error: 'vat period not closed'});
+    if(!values.submitted.CanBeSubmitted) reject({error: 'vat period not closed'});
 
     resolve ({
       canBeSubmitted: values.submitted['CanBeSubmitted'],
+      qBegin: decValues.QStart,
+      qEnd: decValues.QEnd,
       hmrcValues: {
         "periodKey": periodKey,
         "vatDueSales": decValues.OutputVAT,

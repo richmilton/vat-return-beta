@@ -12,9 +12,9 @@ describe('vat-return.prepReturn()', function () {
 
     console.log(data);
     expect(Object.keys(data).length).to.be.equal(3);
-    expect(Object.keys(data['submitted']).length).to.be.equal(11);
+    expect(Object.keys(data['submitted']).length).to.be.equal(10);
     expect(Object.keys(data['due']).length).to.be.equal(6);
-    expect(Object.keys(data['declare']).length).to.be.equal(7);
+    expect(Object.keys(data['declare']).length).to.be.equal(9);
 
   });
 });
