@@ -1,16 +1,11 @@
 const prepReturn = require('./prepReturn');
 
-//get prep return
-
-//post values to api, insert data into VatHistory if successful
-
 const postReturn = (periodKey) => {
   return new Promise(async (resolve, reject) => {
     let values = await prepReturn();
     let decValues = values['declare'];
 
     if(!decValues) reject({error: 'no values found'});
-    if(!values.submitted.CanBeSubmitted) reject({error: 'vat period not closed'});
 
     resolve ({
       canBeSubmitted: values.submitted['CanBeSubmitted'],
