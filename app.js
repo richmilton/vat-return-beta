@@ -123,7 +123,7 @@ app.get('/submit-return', async (req, res) => {
 });
 
 app.get('/post-return', async (req, res) => {
-  const periodKey = req.query['periodKey'];
+  const { periodKey, trial: isTrial }  = req.query;
   const {
     canBeSubmitted,
     qBegin,
@@ -131,8 +131,13 @@ app.get('/post-return', async (req, res) => {
     hmrcValues
   } = await postReturn(periodKey);
 
-  if (canBeSubmitted) {
-    // insert
+  if (isTrial) {
+    hmrcValues.submittedStatus = 'trial only'
+  } else if (!canBeSubmitted) {
+    hmrcValues.submittedStatus = 'period not closed - trial only'
+  }
+
+  if (canBeSubmitted && !isTrial) {
     const insertSales = hmrcValues.totalValueSalesExVAT.toFixed(2);
     const insertPurchases = hmrcValues.totalValuePurchasesExVAT.toFixed(2);
     const insertEcp = hmrcValues.totalAcquisitionsExVAT.toFixed(2);
@@ -141,8 +146,8 @@ app.get('/post-return', async (req, res) => {
     const query = sqPl.query(
       insertVatReturn,
       {
-        type: INSERT,
-        replacements: [
+        type : INSERT,
+        replacements : [
           insertPurchases,
           hmrcValues.vatReclaimedCurrPeriod,
           insertSales,
@@ -157,16 +162,15 @@ app.get('/post-return', async (req, res) => {
 
     await query;
 
-    // declare
-    hmrcValues.totalValueSalesExVAT = hmrcValues.totalValueSalesExVAT.toFixed();
-    hmrcValues.totalValuePurchasesExVAT = hmrcValues.totalValuePurchasesExVAT.toFixed();
-    hmrcValues.totalValueGoodsSuppliedExVAT = hmrcValues.totalValueGoodsSuppliedExVAT.toFixed();
-    hmrcValues.totalAcquisitionsExVAT = hmrcValues.totalAcquisitionsExVAT.toFixed();
-
-    res.send(hmrcValues);
-  } else {
-    res.send({ message: 'Vat period not closed' })
+    hmrcValues.submittedStatus = 'submitted'
   }
+
+  hmrcValues.totalValueSalesExVAT = hmrcValues.totalValueSalesExVAT.toFixed();
+  hmrcValues.totalValuePurchasesExVAT = hmrcValues.totalValuePurchasesExVAT.toFixed();
+  hmrcValues.totalValueGoodsSuppliedExVAT = hmrcValues.totalValueGoodsSuppliedExVAT.toFixed();
+  hmrcValues.totalAcquisitionsExVAT = hmrcValues.totalAcquisitionsExVAT.toFixed();
+
+  res.send(hmrcValues);
 });
 
 app.get('/view-return', (req, res) => {
